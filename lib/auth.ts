@@ -13,28 +13,28 @@ const DEMO_USERS = [
     name: "Admin Dealer",
     email: "admin@pgic.fr",
     // bcrypt hash de "Admin@2026!"
-    passwordHash: "$2b$12$snyGUj7cgsAGMKeh.nH0yucofZOoaUKh41TJElpq1TL5OLxat5aEq",
+    passwordHash: "$2b$12$7QfLRQGSYBaMe2IQbWKooOaa3aWSGue5AAtMRvPGUITiggDKoC8R6",
     role: "directeur" as Role,
   },
   {
     id: "2",
     name: "Émilie Blanc",
     email: "emilie@pgic.fr",
-    passwordHash: "$2b$12$snyGUj7cgsAGMKeh.nH0yucofZOoaUKh41TJElpq1TL5OLxat5aEq",
+    passwordHash: "$2b$12$7QfLRQGSYBaMe2IQbWKooOaa3aWSGue5AAtMRvPGUITiggDKoC8R6",
     role: "vendeur" as Role,
   },
   {
     id: "3",
     name: "Marc Lefebvre",
     email: "marc@pgic.fr",
-    passwordHash: "$2b$12$snyGUj7cgsAGMKeh.nH0yucofZOoaUKh41TJElpq1TL5OLxat5aEq",
+    passwordHash: "$2b$12$7QfLRQGSYBaMe2IQbWKooOaa3aWSGue5AAtMRvPGUITiggDKoC8R6",
     role: "technicien" as Role,
   },
   {
     id: "4",
     name: "Claire Simon",
     email: "claire@pgic.fr",
-    passwordHash: "$2b$12$snyGUj7cgsAGMKeh.nH0yucofZOoaUKh41TJElpq1TL5OLxat5aEq",
+    passwordHash: "$2b$12$7QfLRQGSYBaMe2IQbWKooOaa3aWSGue5AAtMRvPGUITiggDKoC8R6",
     role: "receptionniste" as Role,
   },
 ];
