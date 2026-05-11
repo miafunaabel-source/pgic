@@ -4,7 +4,7 @@ import { ROUTE_PERMISSIONS } from "@/lib/roles";
 import type { Role } from "@/types/next-auth";
 
 export default withAuth(
-  function proxy(req) {
+  function middleware(req) {
     const token = req.nextauth.token;
     const pathname = req.nextUrl.pathname;
     const role = token?.role as Role | undefined;

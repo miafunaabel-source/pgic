@@ -1,11 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { Car, Eye, EyeOff, Loader2, AlertCircle, Clock } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -50,8 +48,8 @@ export default function LoginPage() {
         setError("Email ou mot de passe incorrect.");
       }
     } else {
-      router.push("/");
-      router.refresh();
+      // Full page reload pour que le cookie de session soit reconnu par le middleware
+      window.location.href = "/";
     }
   }
 

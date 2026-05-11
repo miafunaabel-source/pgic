@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Sidebar from "@/components/layout/Sidebar";
+import ConditionalSidebar from "@/components/layout/ConditionalSidebar";
 import AuthProvider from "@/components/layout/AuthProvider";
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr">
       <body className="flex min-h-screen bg-slate-50">
         <AuthProvider>
-          <Sidebar />
+          <ConditionalSidebar />
           <main className="flex-1 p-6 overflow-auto min-h-screen">
             {children}
           </main>
