@@ -4,8 +4,9 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard, Users, Car, ShoppingCart, Wrench,
-  Megaphone, ChevronRight, Bell, Settings, LogOut
+  Megaphone, ChevronRight, Settings, LogOut, FolderOpen,
 } from "lucide-react";
+import NotificationsPanel from "@/components/layout/NotificationsPanel";
 import { cn } from "@/lib/utils";
 import { ROUTE_PERMISSIONS, ROLE_LABELS, ROLE_COLORS } from "@/lib/roles";
 import type { Role } from "@/types/next-auth";
@@ -16,6 +17,7 @@ const ALL_NAV = [
   { href: "/inventory", label: "Stocks Véhicules", icon: Car },
   { href: "/sales", label: "Ventes", icon: ShoppingCart },
   { href: "/workshop", label: "Atelier SAV", icon: Wrench },
+  { href: "/documents", label: "Documents", icon: FolderOpen },
   { href: "/marketing", label: "Marketing", icon: Megaphone },
 ];
 
@@ -35,15 +37,17 @@ export default function Sidebar() {
     ? session.user.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
     : "?";
 
+  const companyName = (session?.user as any)?.company?.concession ?? "";
+
   return (
     <aside className="w-64 bg-slate-900 text-white flex flex-col h-screen sticky top-0">
       <div className="px-6 py-5 border-b border-slate-700">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-            <Car size={18} />
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center shrink-0">
+            <span className="text-white font-bold text-sm">P</span>
           </div>
-          <div>
-            <p className="font-bold text-sm leading-none">PGIC</p>
+          <div className="min-w-0">
+            <p className="font-bold text-sm leading-none truncate">{companyName || "PGIC"}</p>
             <p className="text-slate-400 text-xs mt-0.5">Hub Digital Auto</p>
           </div>
         </div>
@@ -72,15 +76,17 @@ export default function Sidebar() {
       </nav>
 
       <div className="px-3 py-4 border-t border-slate-700 space-y-0.5">
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
-          <Bell size={18} />
-          <span className="flex-1 text-left">Notifications</span>
-          <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">5</span>
-        </button>
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
-          <Settings size={18} />
-          <span>Paramètres</span>
-        </button>
+        <NotificationsPanel />
+        {role === "directeur" && (
+          <Link href="/settings" className={cn(
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+            pathname === "/settings" ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white"
+          )}>
+            <Settings size={18} />
+            <span className="flex-1">Paramètres</span>
+            {pathname === "/settings" && <ChevronRight size={14} />}
+          </Link>
+        )}
 
         {/* User info + logout */}
         <div className="px-3 py-2 mt-2">

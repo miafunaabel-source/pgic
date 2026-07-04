@@ -2,12 +2,14 @@ import type { Role } from "@/types/next-auth";
 
 // Définit quels rôles peuvent accéder à quelles routes
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
-  "/":          ["directeur", "vendeur", "technicien", "receptionniste"],
-  "/clients":   ["directeur", "vendeur", "receptionniste"],
-  "/inventory": ["directeur", "vendeur"],
-  "/sales":     ["directeur", "vendeur"],
-  "/workshop":  ["directeur", "technicien", "receptionniste"],
-  "/marketing": ["directeur"],
+  "/":           ["directeur", "vendeur", "technicien", "receptionniste"],
+  "/clients":    ["directeur", "vendeur", "receptionniste"],
+  "/inventory":  ["directeur", "vendeur"],
+  "/sales":      ["directeur", "vendeur"],
+  "/workshop":   ["directeur", "technicien", "receptionniste"],
+  "/documents":  ["directeur", "vendeur"],
+  "/marketing":  ["directeur"],
+  "/settings":   ["directeur"],
 };
 
 export const ROLE_LABELS: Record<Role, string> = {

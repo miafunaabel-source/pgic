@@ -9,12 +9,13 @@ interface StatCardProps {
   icon: LucideIcon;
   iconColor?: string;
   iconBg?: string;
+  onClick?: () => void;
 }
 
-export default function StatCard({ title, value, change, icon: Icon, iconColor = "text-blue-600", iconBg = "bg-blue-50" }: StatCardProps) {
+export default function StatCard({ title, value, change, icon: Icon, iconColor = "text-blue-600", iconBg = "bg-blue-50", onClick }: StatCardProps) {
   const positive = change !== undefined && change >= 0;
   return (
-    <div className="card p-5">
+    <div className={cn("card p-5", onClick && "cursor-pointer hover:shadow-md transition-shadow")} onClick={onClick}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-slate-500 font-medium">{title}</p>

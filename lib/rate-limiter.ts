@@ -1,79 +1,39 @@
-/**
- * Rate limiter en mémoire pour les tentatives de connexion.
- * En production, remplacer par @upstash/ratelimit avec Redis
- * pour persister les compteurs entre redémarrages serveur.
- */
+import { getRedis } from "./userStore";
 
 const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 15 * 60 * 1000;  // fenêtre glissante 15 min
-const BLOCK_MS = 15 * 60 * 1000;   // blocage 15 min après 5 échecs
-
-type Record = {
-  count: number;
-  firstAttempt: number;
-  blockedUntil?: number;
-};
-
-const store = new Map<string, Record>();
-
-// Nettoyage périodique pour éviter les fuites mémoire
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, rec] of store.entries()) {
-    if (now - rec.firstAttempt > WINDOW_MS * 2) {
-      store.delete(key);
-    }
-  }
-}, 30 * 60 * 1000);
+const WINDOW_SECONDS = 15 * 60;
+const BLOCK_SECONDS = 15 * 60;
 
 export type RateLimitResult =
   | { allowed: true; remaining: number }
   | { allowed: false; retryAfterMs: number };
 
-export function checkRateLimit(identifier: string): RateLimitResult {
-  const now = Date.now();
-  const rec = store.get(identifier);
+export async function checkRateLimit(identifier: string): Promise<RateLimitResult> {
+  const redis = getRedis();
+  const blockKey = `rl:block:${identifier}`;
+  const countKey = `rl:count:${identifier}`;
 
-  if (!rec) {
-    return { allowed: true, remaining: MAX_ATTEMPTS - 1 };
-  }
+  const ttl = await redis.ttl(blockKey);
+  if (ttl > 0) return { allowed: false, retryAfterMs: ttl * 1000 };
 
-  // Bloqué ?
-  if (rec.blockedUntil && now < rec.blockedUntil) {
-    return { allowed: false, retryAfterMs: rec.blockedUntil - now };
-  }
+  const count = await redis.get(countKey);
+  const current = count ? parseInt(count, 10) : 0;
+  if (current >= MAX_ATTEMPTS) return { allowed: false, retryAfterMs: BLOCK_SECONDS * 1000 };
 
-  // Fenêtre expirée → réinitialiser
-  if (now - rec.firstAttempt > WINDOW_MS) {
-    store.delete(identifier);
-    return { allowed: true, remaining: MAX_ATTEMPTS - 1 };
-  }
-
-  // Seuil atteint → bloquer
-  if (rec.count >= MAX_ATTEMPTS) {
-    rec.blockedUntil = now + BLOCK_MS;
-    store.set(identifier, rec);
-    return { allowed: false, retryAfterMs: BLOCK_MS };
-  }
-
-  return { allowed: true, remaining: MAX_ATTEMPTS - rec.count - 1 };
+  return { allowed: true, remaining: MAX_ATTEMPTS - current };
 }
 
-export function recordFailedAttempt(identifier: string): void {
-  const now = Date.now();
-  const rec = store.get(identifier);
+export async function recordFailedAttempt(identifier: string): Promise<void> {
+  const redis = getRedis();
+  const countKey = `rl:count:${identifier}`;
+  const blockKey = `rl:block:${identifier}`;
 
-  if (!rec || now - rec.firstAttempt > WINDOW_MS) {
-    store.set(identifier, { count: 1, firstAttempt: now });
-  } else {
-    rec.count++;
-    if (rec.count >= MAX_ATTEMPTS) {
-      rec.blockedUntil = now + BLOCK_MS;
-    }
-    store.set(identifier, rec);
-  }
+  const count = await redis.incr(countKey);
+  if (count === 1) await redis.expire(countKey, WINDOW_SECONDS);
+  if (count >= MAX_ATTEMPTS) await redis.setex(blockKey, BLOCK_SECONDS, "1");
 }
 
-export function resetAttempts(identifier: string): void {
-  store.delete(identifier);
+export async function resetAttempts(identifier: string): Promise<void> {
+  const redis = getRedis();
+  await redis.del(`rl:count:${identifier}`, `rl:block:${identifier}`);
 }
