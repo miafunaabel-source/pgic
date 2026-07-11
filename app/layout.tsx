@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 import { Suspense } from "react";
 import ConditionalSidebar from "@/components/layout/ConditionalSidebar";
 import ConditionalMain from "@/components/layout/ConditionalMain";
@@ -42,8 +45,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
-      <body className="flex min-h-screen bg-slate-50">
+    <html lang="fr" className={inter.variable}>
+      <body className="flex min-h-screen bg-slate-50 font-sans">
         <AuthProvider>
           <ToastProvider>
             <PwaRegistration />
