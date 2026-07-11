@@ -15,7 +15,7 @@ async function sendResetEmail(email: string, token: string) {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "PGIC <onboarding@resend.dev>",
+      from: "PGIC <noreply@pgic.eu>",
       to: [email],
       subject: "Réinitialisation de votre mot de passe PGIC",
       html: `
