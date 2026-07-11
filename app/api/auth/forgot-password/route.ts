@@ -3,7 +3,7 @@ import { randomBytes } from "crypto";
 import { findUserByEmail, getRedis } from "@/lib/userStore";
 import { checkRateLimit, recordFailedAttempt } from "@/lib/rate-limiter";
 
-const SITE_URL = process.env.NEXTAUTH_URL ?? "https://pgic-rho.vercel.app";
+const SITE_URL = process.env.NEXTAUTH_URL ?? "https://app.pgic.eu";
 const TOKEN_TTL = 3600;
 
 async function sendResetEmail(email: string, token: string) {

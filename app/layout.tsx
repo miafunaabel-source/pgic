@@ -12,7 +12,7 @@ import PwaRegistration from "@/components/layout/PwaRegistration";
 import SetupHandler from "@/components/layout/SetupHandler";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://pgic-rho.vercel.app"),
+  metadataBase: new URL("https://app.pgic.eu"),
   title: "PGIC - Hub Digital Concessionnaire",
   description: "Plateforme de Gestion Intégrée pour Concessionnaires Automobiles",
   manifest: "/manifest.webmanifest",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "PGIC - Tableau de bord",
     description: "Connectez-vous à votre espace de gestion PGIC.",
-    url: "https://pgic-rho.vercel.app",
+    url: "https://app.pgic.eu",
     siteName: "PGIC",
     locale: "fr_FR",
     type: "website",
