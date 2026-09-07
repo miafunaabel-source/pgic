@@ -1,9 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FileText, Search, Upload, Download, Eye, Trash2,
   FileSignature, Receipt, ClipboardList, Car, Filter,
-  CheckCircle, Clock, AlertCircle, X, Plus, FolderOpen,
+  CheckCircle, Clock, AlertCircle, X, Plus, FolderOpen, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -55,28 +55,32 @@ const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; Icon: typ
   brouillon: { label: "Brouillon", color: "bg-slate-100 text-slate-500", Icon: AlertCircle },
 };
 
-const MOCK_DOCS: Document[] = [
-  { id: "1", nom: "Contrat_Dupont_Peugeot308.pdf", type: "contrat", status: "signe", client: "Martin Dupont", vehicule: "Peugeot 308 2024", date: "2026-05-12", taille: "284 Ko", ajoutePar: "Jean Vendeur" },
-  { id: "2", nom: "Facture_Lefevre_Renault.pdf", type: "facture", status: "signe", client: "Sophie Lefèvre", vehicule: "Renault Clio V", date: "2026-05-10", taille: "156 Ko", ajoutePar: "Jean Vendeur" },
-  { id: "3", nom: "BonCommande_Moreau_Tesla.pdf", type: "bon_commande", status: "en_attente", client: "Pierre Moreau", vehicule: "Tesla Model 3", date: "2026-05-09", taille: "98 Ko", ajoutePar: "Marie Martin" },
-  { id: "4", nom: "CarteGrise_Bernard_BMW.pdf", type: "carte_grise", status: "signe", client: "Claire Bernard", vehicule: "BMW Série 3", date: "2026-05-08", taille: "2.1 Mo", ajoutePar: "Jean Vendeur" },
-  { id: "5", nom: "Procuration_Petit_Volkswagen.pdf", type: "procuration", status: "signe", client: "Jacques Petit", vehicule: "Volkswagen Golf 8", date: "2026-05-07", taille: "73 Ko", ajoutePar: "Marie Martin" },
-  { id: "6", nom: "Contrat_Roux_Citroën.pdf", type: "contrat", status: "en_attente", client: "Anne Roux", vehicule: "Citroën C3", date: "2026-05-06", taille: "241 Ko", ajoutePar: "Jean Vendeur" },
-  { id: "7", nom: "Facture_Simon_Toyota.pdf", type: "facture", status: "brouillon", client: "Luc Simon", vehicule: "Toyota Yaris", date: "2026-05-05", taille: "134 Ko", ajoutePar: "Marie Martin" },
-  { id: "8", nom: "Contrat_Michel_Audi.pdf", type: "contrat", status: "signe", client: "Hélène Michel", vehicule: "Audi A3", date: "2026-05-03", taille: "298 Ko", ajoutePar: "Jean Vendeur" },
-  { id: "9", nom: "BonCommande_Garcia_Mercedes.pdf", type: "bon_commande", status: "brouillon", client: "Carlos Garcia", vehicule: "Mercedes Classe A", date: "2026-05-01", taille: "87 Ko", ajoutePar: "Marie Martin" },
-  { id: "10", nom: "Facture_Martinez_Ford.pdf", type: "facture", status: "signe", client: "Isabelle Martinez", vehicule: "Ford Puma", date: "2026-04-29", taille: "162 Ko", ajoutePar: "Jean Vendeur" },
-  { id: "11", nom: "Procuration_Blanc_Opel.pdf", type: "procuration", status: "en_attente", client: "Thomas Blanc", vehicule: "Opel Corsa", date: "2026-04-28", taille: "68 Ko", ajoutePar: "Marie Martin" },
-  { id: "12", nom: "CarteGrise_Clement_Dacia.pdf", type: "carte_grise", status: "signe", client: "Émilie Clément", vehicule: "Dacia Sandero", date: "2026-04-25", taille: "1.8 Mo", ajoutePar: "Jean Vendeur" },
-];
-
-function UploadModal({ onClose }: { onClose: () => void }) {
+function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: (doc: Document) => void }) {
   const [step, setStep] = useState<"form" | "done">("form");
-  const [form, setForm] = useState({ client: "", type: "contrat" as DocType, vehicule: "", fichier: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({ client: "", type: "contrat" as DocType, vehicule: "", nom: "" });
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStep("done");
+    setLoading(true);
+    setError("");
+    try {
+      const nomFichier = form.nom || `${TYPE_LABELS[form.type]}_${form.client.replace(/\s+/g, "_")}.pdf`;
+      const res = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nom: nomFichier, type: form.type, client: form.client, vehicule: form.vehicule }),
+      });
+      if (!res.ok) { setError("Erreur lors de l'enregistrement."); return; }
+      const doc = await res.json();
+      onSaved(doc);
+      setStep("done");
+    } catch {
+      setError("Erreur réseau.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -84,9 +88,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="font-semibold text-slate-900">Ajouter un document</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <X size={20} />
-          </button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
         </div>
 
         {step === "form" ? (
@@ -105,9 +107,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
                 value={form.type} onChange={e => setForm({ ...form, type: e.target.value as DocType })}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {Object.entries(TYPE_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
+                {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
             <div>
@@ -119,18 +119,25 @@ function UploadModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Fichier *</label>
-              <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer">
-                <Upload size={24} className="text-slate-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">Glissez un fichier ici ou <span className="text-blue-600 font-medium">parcourir</span></p>
-                <p className="text-xs text-slate-400 mt-1">PDF, DOCX, JPEG — max 20 Mo</p>
-              </div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Nom du fichier</label>
+              <input
+                value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })}
+                placeholder="Généré automatiquement si vide"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
+            <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer">
+              <Upload size={24} className="text-slate-400 mx-auto mb-2" />
+              <p className="text-sm text-slate-500">Glissez un fichier ici ou <span className="text-blue-600 font-medium">parcourir</span></p>
+              <p className="text-xs text-slate-400 mt-1">PDF, DOCX, JPEG — max 20 Mo</p>
+            </div>
+            {error && <p className="text-red-500 text-sm">{error}</p>}
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={onClose} className="flex-1 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
                 Annuler
               </button>
-              <button type="submit" className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+              <button type="submit" disabled={loading} className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                {loading && <Loader2 size={14} className="animate-spin" />}
                 Enregistrer
               </button>
             </div>
@@ -153,12 +160,39 @@ function UploadModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function DocumentsPage() {
+  const [docs, setDocs] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<DocType | "all">("all");
   const [filterStatus, setFilterStatus] = useState<DocStatus | "all">("all");
   const [showUpload, setShowUpload] = useState(false);
 
-  const filtered = MOCK_DOCS.filter(d => {
+  useEffect(() => {
+    fetch("/api/documents")
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setDocs(Array.isArray(data) ? data : []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleDelete(id: string) {
+    if (!confirm("Supprimer ce document ?")) return;
+    await fetch(`/api/documents/${id}`, { method: "DELETE" });
+    setDocs(prev => prev.filter(d => d.id !== id));
+  }
+
+  async function handleStatusChange(id: string, status: DocStatus) {
+    const res = await fetch(`/api/documents/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setDocs(prev => prev.map(d => d.id === id ? updated : d));
+    }
+  }
+
+  const filtered = docs.filter(d => {
     const matchSearch = d.client.toLowerCase().includes(search.toLowerCase()) ||
       d.nom.toLowerCase().includes(search.toLowerCase()) ||
       (d.vehicule?.toLowerCase().includes(search.toLowerCase()) ?? false);
@@ -168,17 +202,21 @@ export default function DocumentsPage() {
   });
 
   const stats = {
-    total: MOCK_DOCS.length,
-    signes: MOCK_DOCS.filter(d => d.status === "signe").length,
-    enAttente: MOCK_DOCS.filter(d => d.status === "en_attente").length,
-    brouillons: MOCK_DOCS.filter(d => d.status === "brouillon").length,
+    total: docs.length,
+    signes: docs.filter(d => d.status === "signe").length,
+    enAttente: docs.filter(d => d.status === "en_attente").length,
+    brouillons: docs.filter(d => d.status === "brouillon").length,
   };
 
   return (
     <div className="space-y-6">
-      {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
+      {showUpload && (
+        <UploadModal
+          onClose={() => setShowUpload(false)}
+          onSaved={doc => { setDocs(prev => [doc, ...prev]); setShowUpload(false); }}
+        />
+      )}
 
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Documents Clients</h1>
@@ -192,7 +230,6 @@ export default function DocumentsPage() {
         </button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         {[
           { label: "Total documents", value: stats.total, color: "text-slate-900", bg: "bg-white" },
@@ -207,7 +244,6 @@ export default function DocumentsPage() {
         ))}
       </div>
 
-      {/* Filters */}
       <div className="bg-white rounded-xl border border-slate-100 p-4 flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-48">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -238,85 +274,95 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="text-left px-5 py-3 font-semibold text-slate-600">Document</th>
-                <th className="text-left px-5 py-3 font-semibold text-slate-600">Client</th>
-                <th className="text-left px-5 py-3 font-semibold text-slate-600">Véhicule</th>
-                <th className="text-left px-5 py-3 font-semibold text-slate-600">Type</th>
-                <th className="text-left px-5 py-3 font-semibold text-slate-600">Statut</th>
-                <th className="text-left px-5 py-3 font-semibold text-slate-600">Date</th>
-                <th className="text-left px-5 py-3 font-semibold text-slate-600">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">
-                    <FileText size={32} className="mx-auto mb-2 opacity-30" />
-                    Aucun document trouvé
-                  </td>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 size={24} className="animate-spin text-blue-500" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600">Document</th>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600">Client</th>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600">Véhicule</th>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600">Type</th>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600">Statut</th>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600">Date</th>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600">Actions</th>
                 </tr>
-              ) : filtered.map(doc => {
-                const TypeIcon = TYPE_ICONS[doc.type];
-                const status = STATUS_CONFIG[doc.status];
-                const StatusIcon = status.Icon;
-                return (
-                  <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
-                          <TypeIcon size={15} className="text-slate-500" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-900 leading-tight truncate max-w-44">{doc.nom}</p>
-                          <p className="text-xs text-slate-400">{doc.taille} · {doc.ajoutePar}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <p className="font-medium text-slate-800">{doc.client}</p>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <p className="text-slate-600 text-xs">{doc.vehicule ?? "—"}</p>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className={cn("text-xs font-medium px-2 py-1 rounded-full", TYPE_COLORS[doc.type])}>
-                        {TYPE_LABELS[doc.type]}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full", status.color)}>
-                        <StatusIcon size={11} />
-                        {status.label}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-500 text-xs">
-                      {new Date(doc.date).toLocaleDateString("fr-FR")}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1">
-                        <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Voir">
-                          <Eye size={15} />
-                        </button>
-                        <button className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Télécharger">
-                          <Download size={15} />
-                        </button>
-                        <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Supprimer">
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-12 text-slate-400">
+                      <FileText size={32} className="mx-auto mb-2 opacity-30" />
+                      {docs.length === 0 ? "Aucun document enregistré" : "Aucun document trouvé"}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                ) : filtered.map(doc => {
+                  const TypeIcon = TYPE_ICONS[doc.type];
+                  const status = STATUS_CONFIG[doc.status];
+                  const StatusIcon = status.Icon;
+                  return (
+                    <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
+                            <TypeIcon size={15} className="text-slate-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900 leading-tight truncate max-w-44">{doc.nom}</p>
+                            <p className="text-xs text-slate-400">{doc.taille} · {doc.ajoutePar}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 font-medium text-slate-800">{doc.client}</td>
+                      <td className="px-5 py-3.5 text-slate-600 text-xs">{doc.vehicule ?? "—"}</td>
+                      <td className="px-5 py-3.5">
+                        <span className={cn("text-xs font-medium px-2 py-1 rounded-full", TYPE_COLORS[doc.type])}>
+                          {TYPE_LABELS[doc.type]}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <select
+                          value={doc.status}
+                          onChange={e => handleStatusChange(doc.id, e.target.value as DocStatus)}
+                          className={cn("text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500", status.color)}
+                        >
+                          <option value="brouillon">Brouillon</option>
+                          <option value="en_attente">En attente</option>
+                          <option value="signe">Signé</option>
+                        </select>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-500 text-xs">
+                        {new Date(doc.date).toLocaleDateString("fr-FR")}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-1">
+                          <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Voir">
+                            <Eye size={15} />
+                          </button>
+                          <button className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Télécharger">
+                            <Download size={15} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(doc.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Supprimer"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
         {filtered.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100 text-xs text-slate-400">
             {filtered.length} document{filtered.length > 1 ? "s" : ""} affiché{filtered.length > 1 ? "s" : ""}
