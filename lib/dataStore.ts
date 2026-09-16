@@ -4,9 +4,10 @@ import { randomUUID } from "crypto";
 let client: Redis | null = null;
 
 function getRedis(): Redis {
-  if (!process.env.REDIS_URL) throw new Error("REDIS_URL non configuré");
+  const url = process.env.REDIS_URL ?? process.env.KV_URL;
+  if (!url) throw new Error("REDIS_URL non configuré");
   if (!client) {
-    client = new Redis(process.env.REDIS_URL, { maxRetriesPerRequest: 2, lazyConnect: true });
+    client = new Redis(url, { maxRetriesPerRequest: 2, lazyConnect: true });
   }
   return client;
 }
