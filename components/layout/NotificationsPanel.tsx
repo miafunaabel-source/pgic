@@ -62,7 +62,15 @@ function NotifDropdown({
 
         {/* List */}
         <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-50">
-          {notifs.map(n => {
+          {notifs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+              <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+                <Bell size={18} className="text-slate-400" />
+              </div>
+              <p className="text-sm font-medium text-slate-600">Aucune notification</p>
+              <p className="text-xs text-slate-400 mt-1">Les alertes apparaîtront ici en temps réel.</p>
+            </div>
+          ) : notifs.map(n => {
             const { Icon, color, bg } = TYPE_CONFIG[n.type];
             return (
               <div
