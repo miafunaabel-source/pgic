@@ -37,22 +37,92 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
-function ClientDetail({ client, onClose, onToast }: { client: Client; onClose: () => void; onToast: (msg: string) => void }) {
+function ClientDetail({ client, onClose, onToast, onUpdate }: {
+  client: Client;
+  onClose: () => void;
+  onToast: (msg: string, type?: "success" | "error") => void;
+  onUpdate: (updated: Client) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    prenom: client.prenom,
+    nom: client.nom,
+    email: client.email,
+    telephone: client.telephone,
+    ville: client.ville,
+    vehicule: client.vehicule || "",
+    statut: client.statut,
+  });
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/clients/${client.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        onToast(data.error ?? "Erreur lors de la sauvegarde", "error");
+        return;
+      }
+      const updated: Client = await res.json();
+      onUpdate(updated);
+      setEditing(false);
+      onToast(`Fiche de ${updated.prenom} ${updated.nom} mise à jour`);
+    } catch {
+      onToast("Erreur réseau, réessayez", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputCls = "w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500";
+
   return (
     <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-end">
       <div className="bg-white w-full max-w-md h-full shadow-2xl overflow-y-auto">
         <div className="p-6 border-b border-slate-100">
           <div className="flex items-center justify-between mb-4">
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-sm">← Retour</button>
-            <button onClick={() => onToast(`Fiche de ${client.prenom} ${client.nom} mise à jour`)} className="btn-primary">Modifier</button>
+            {editing ? (
+              <div className="flex gap-2">
+                <button onClick={() => setEditing(false)} className="btn-secondary text-sm">Annuler</button>
+                <button onClick={handleSave} disabled={saving} className="btn-primary text-sm">
+                  {saving ? "Sauvegarde…" : "Sauvegarder"}
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => setEditing(true)} className="btn-primary">Modifier</button>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center text-xl font-bold text-blue-700">
-              {client.prenom[0]}{client.nom[0]}
+              {(editing ? editForm.prenom : client.prenom)[0]}{(editing ? editForm.nom : client.nom)[0]}
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">{client.prenom} {client.nom}</h2>
-              <StatutBadge statut={client.statut} />
+              {editing ? (
+                <div className="flex gap-2">
+                  <input value={editForm.prenom} onChange={e => setEditForm(f => ({ ...f, prenom: e.target.value }))}
+                    placeholder="Prénom" className="w-28 px-2 py-1 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold" />
+                  <input value={editForm.nom} onChange={e => setEditForm(f => ({ ...f, nom: e.target.value }))}
+                    placeholder="Nom" className="w-28 px-2 py-1 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold" />
+                </div>
+              ) : (
+                <h2 className="text-lg font-bold text-slate-900">{client.prenom} {client.nom}</h2>
+              )}
+              {editing ? (
+                <select value={editForm.statut} onChange={e => setEditForm(f => ({ ...f, statut: e.target.value as Client["statut"] }))}
+                  className="mt-1 px-2 py-0.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="prospect">Prospect</option>
+                  <option value="client">Client</option>
+                  <option value="inactif">Inactif</option>
+                </select>
+              ) : (
+                <StatutBadge statut={client.statut} />
+              )}
             </div>
           </div>
         </div>
@@ -60,21 +130,35 @@ function ClientDetail({ client, onClose, onToast }: { client: Client; onClose: (
         <div className="p-6 space-y-6">
           <div>
             <h3 className="text-xs font-semibold text-slate-400 uppercase mb-3">Coordonnées</h3>
-            <div className="space-y-2">
-              <a href={`mailto:${client.email}`} className="flex items-center gap-3 text-sm hover:text-blue-600 transition-colors">
-                <Mail size={14} className="text-slate-400" />
-                <span>{client.email}</span>
-              </a>
-              <a href={`tel:${client.telephone}`} className="flex items-center gap-3 text-sm hover:text-blue-600 transition-colors">
-                <Phone size={14} className="text-slate-400" />
-                <span>{client.telephone}</span>
-              </a>
-            </div>
+            {editing ? (
+              <div className="space-y-2">
+                <input value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  type="email" placeholder="Email" className={inputCls} />
+                <input value={editForm.telephone} onChange={e => setEditForm(f => ({ ...f, telephone: e.target.value }))}
+                  placeholder="Téléphone" className={inputCls} />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <a href={`mailto:${client.email}`} className="flex items-center gap-3 text-sm hover:text-blue-600 transition-colors">
+                  <Mail size={14} className="text-slate-400" />
+                  <span>{client.email}</span>
+                </a>
+                <a href={`tel:${client.telephone}`} className="flex items-center gap-3 text-sm hover:text-blue-600 transition-colors">
+                  <Phone size={14} className="text-slate-400" />
+                  <span>{client.telephone}</span>
+                </a>
+              </div>
+            )}
           </div>
 
           <div>
             <h3 className="text-xs font-semibold text-slate-400 uppercase mb-3">Véhicule actuel</h3>
-            <p className="text-sm text-slate-700">{client.vehicule || "Aucun"}</p>
+            {editing ? (
+              <input value={editForm.vehicule} onChange={e => setEditForm(f => ({ ...f, vehicule: e.target.value }))}
+                placeholder="Ex: Peugeot 308 2021" className={inputCls} />
+            ) : (
+              <p className="text-sm text-slate-700">{client.vehicule || "Aucun"}</p>
+            )}
           </div>
 
           <div>
@@ -94,25 +178,32 @@ function ClientDetail({ client, onClose, onToast }: { client: Client; onClose: (
               </div>
               <div className="bg-slate-50 rounded-lg p-3">
                 <p className="text-xs text-slate-500">Ville</p>
-                <p className="text-sm font-semibold text-slate-900">{client.ville}</p>
+                {editing ? (
+                  <input value={editForm.ville} onChange={e => setEditForm(f => ({ ...f, ville: e.target.value }))}
+                    placeholder="Ville" className="w-full text-sm font-semibold border border-slate-200 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                ) : (
+                  <p className="text-sm font-semibold text-slate-900">{client.ville}</p>
+                )}
               </div>
             </div>
           </div>
 
-          <div>
-            <h3 className="text-xs font-semibold text-slate-400 uppercase mb-3">Actions rapides</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <a href={`mailto:${client.email}`} className="btn-secondary text-center justify-center flex items-center gap-2">
-                <Mail size={14} /> Envoyer email
-              </a>
-              <a href={`tel:${client.telephone}`} className="btn-secondary text-center justify-center flex items-center gap-2">
-                <Phone size={14} /> Appeler
-              </a>
-              <button onClick={() => { onToast(`RDV créé pour ${client.prenom} ${client.nom}`); onClose(); }} className="btn-primary text-center justify-center flex items-center gap-2 col-span-2">
-                + Nouveau RDV
-              </button>
+          {!editing && (
+            <div>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-3">Actions rapides</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <a href={`mailto:${client.email}`} className="btn-secondary text-center justify-center flex items-center gap-2">
+                  <Mail size={14} /> Envoyer email
+                </a>
+                <a href={`tel:${client.telephone}`} className="btn-secondary text-center justify-center flex items-center gap-2">
+                  <Phone size={14} /> Appeler
+                </a>
+                <button onClick={() => { onToast(`RDV créé pour ${client.prenom} ${client.nom}`); onClose(); }} className="btn-primary text-center justify-center flex items-center gap-2 col-span-2">
+                  + Nouveau RDV
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -183,7 +274,11 @@ export default function ClientsPage() {
         <ClientDetail
           client={selected}
           onClose={() => setSelected(null)}
-          onToast={msg => toast("success", msg)}
+          onToast={(msg, type) => toast(type ?? "success", msg)}
+          onUpdate={updated => {
+            setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
+            setSelected(updated);
+          }}
         />
       )}
 
