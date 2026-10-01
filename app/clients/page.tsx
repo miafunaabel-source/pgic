@@ -53,6 +53,9 @@ function ClientDetail({ client, onClose, onToast, onUpdate }: {
     ville: client.ville,
     vehicule: client.vehicule || "",
     statut: client.statut,
+    valeurTotale: String(client.valeurTotale),
+    score: String(client.score),
+    derniereVisite: client.derniereVisite,
   });
 
   async function handleSave() {
@@ -61,7 +64,11 @@ function ClientDetail({ client, onClose, onToast, onUpdate }: {
       const res = await fetch(`/api/clients/${client.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify({
+          ...editForm,
+          valeurTotale: Number(editForm.valeurTotale) || 0,
+          score: Math.min(100, Math.max(0, Number(editForm.score) || 0)),
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -139,7 +146,7 @@ function ClientDetail({ client, onClose, onToast, onUpdate }: {
               </div>
             ) : (
               <div className="space-y-2">
-                <a href={`mailto:${client.email}`} className="flex items-center gap-3 text-sm hover:text-blue-600 transition-colors">
+                <a href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(client.email)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm hover:text-blue-600 transition-colors">
                   <Mail size={14} className="text-slate-400" />
                   <span>{client.email}</span>
                 </a>
@@ -165,16 +172,31 @@ function ClientDetail({ client, onClose, onToast, onUpdate }: {
             <h3 className="text-xs font-semibold text-slate-400 uppercase mb-3">Statistiques</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-xs text-slate-500">Valeur totale</p>
-                <p className="text-base font-bold text-slate-900">{formatCurrency(client.valeurTotale)}</p>
+                <p className="text-xs text-slate-500">Valeur totale (€)</p>
+                {editing ? (
+                  <input type="number" value={editForm.valeurTotale} onChange={e => setEditForm(f => ({ ...f, valeurTotale: e.target.value }))}
+                    className="w-full text-base font-bold border border-slate-200 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                ) : (
+                  <p className="text-base font-bold text-slate-900">{formatCurrency(client.valeurTotale)}</p>
+                )}
               </div>
               <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-xs text-slate-500">Score fidélité</p>
-                <p className="text-base font-bold text-slate-900">{client.score}/100</p>
+                <p className="text-xs text-slate-500">Score fidélité (/100)</p>
+                {editing ? (
+                  <input type="number" min="0" max="100" value={editForm.score} onChange={e => setEditForm(f => ({ ...f, score: e.target.value }))}
+                    className="w-full text-base font-bold border border-slate-200 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                ) : (
+                  <p className="text-base font-bold text-slate-900">{client.score}/100</p>
+                )}
               </div>
               <div className="bg-slate-50 rounded-lg p-3">
                 <p className="text-xs text-slate-500">Dernière visite</p>
-                <p className="text-sm font-semibold text-slate-900">{formatDate(client.derniereVisite)}</p>
+                {editing ? (
+                  <input type="date" value={editForm.derniereVisite} onChange={e => setEditForm(f => ({ ...f, derniereVisite: e.target.value }))}
+                    className="w-full text-sm font-semibold border border-slate-200 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                ) : (
+                  <p className="text-sm font-semibold text-slate-900">{formatDate(client.derniereVisite)}</p>
+                )}
               </div>
               <div className="bg-slate-50 rounded-lg p-3">
                 <p className="text-xs text-slate-500">Ville</p>
@@ -192,7 +214,7 @@ function ClientDetail({ client, onClose, onToast, onUpdate }: {
             <div>
               <h3 className="text-xs font-semibold text-slate-400 uppercase mb-3">Actions rapides</h3>
               <div className="grid grid-cols-2 gap-2">
-                <a href={`mailto:${client.email}`} className="btn-secondary text-center justify-center flex items-center gap-2">
+                <a href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(client.email)}`} target="_blank" rel="noopener noreferrer" className="btn-secondary text-center justify-center flex items-center gap-2">
                   <Mail size={14} /> Envoyer email
                 </a>
                 <a href={`tel:${client.telephone}`} className="btn-secondary text-center justify-center flex items-center gap-2">

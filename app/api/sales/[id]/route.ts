@@ -13,6 +13,7 @@ const venteUpdateSchema = z.object({
   financement: z.string().optional(),
   statut: z.enum(["devis", "commande", "finance", "livre"]).optional(),
   date: z.string().optional(),
+  garage: z.string().optional(),
 });
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {

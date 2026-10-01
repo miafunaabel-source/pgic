@@ -49,6 +49,7 @@ export type Vente = {
   montant: number;
   statut: "devis" | "commande" | "finance" | "livre";
   financement: string;
+  garage?: string;
 };
 
 export const clients: Client[] = [

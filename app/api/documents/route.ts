@@ -14,6 +14,8 @@ export type Document = {
   date: string;
   taille: string;
   ajoutePar: string;
+  fileData?: string;
+  fileMime?: string;
 };
 
 const schema = z.object({
@@ -22,6 +24,8 @@ const schema = z.object({
   client: z.string().min(1),
   vehicule: z.string().optional(),
   taille: z.string().optional(),
+  fileData: z.string().optional(),
+  fileMime: z.string().optional(),
 });
 
 export async function GET() {
@@ -36,7 +40,7 @@ export async function POST(req: Request) {
   if (!session?.user?.id) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
-  const { nom, type, client, vehicule, taille } = parsed.data;
+  const { nom, type, client, vehicule, taille, fileData, fileMime } = parsed.data;
   const item = await createItem<Document>("documents", session.user.id, {
     nom,
     type,
@@ -46,6 +50,8 @@ export async function POST(req: Request) {
     date: new Date().toISOString().slice(0, 10),
     taille: taille || "—",
     ajoutePar: session.user.name ?? session.user.email ?? "Utilisateur",
+    fileData: fileData || undefined,
+    fileMime: fileMime || undefined,
   });
   return NextResponse.json(item, { status: 201 });
 }

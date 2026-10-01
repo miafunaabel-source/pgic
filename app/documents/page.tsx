@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   FileText, Search, Upload, Download, Eye, Trash2,
   FileSignature, Receipt, ClipboardList, Car, Filter,
@@ -20,6 +20,8 @@ interface Document {
   date: string;
   taille: string;
   ajoutePar: string;
+  fileData?: string;
+  fileMime?: string;
 }
 
 const TYPE_LABELS: Record<DocType, string> = {
@@ -60,17 +62,47 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: (doc:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({ client: "", type: "contrat" as DocType, vehicule: "", nom: "" });
+  const [fileData, setFileData] = useState("");
+  const [fileMime, setFileMime] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [fileSize, setFileSize] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Fichier trop volumineux (max 5 Mo)");
+      return;
+    }
+    setError("");
+    setFileName(file.name);
+    setFileSize(`${(file.size / 1024).toFixed(0)} Ko`);
+    setFileMime(file.type);
+    if (!form.nom) setForm(f => ({ ...f, nom: file.name }));
+    const reader = new FileReader();
+    reader.onload = (ev) => setFileData(ev.target!.result as string);
+    reader.readAsDataURL(file);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
     try {
-      const nomFichier = form.nom || `${TYPE_LABELS[form.type]}_${form.client.replace(/\s+/g, "_")}.pdf`;
+      const nomFichier = form.nom || fileName || `${TYPE_LABELS[form.type]}_${form.client.replace(/\s+/g, "_")}.pdf`;
       const res = await fetch("/api/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nom: nomFichier, type: form.type, client: form.client, vehicule: form.vehicule }),
+        body: JSON.stringify({
+          nom: nomFichier,
+          type: form.type,
+          client: form.client,
+          vehicule: form.vehicule,
+          taille: fileSize || "—",
+          fileData: fileData || undefined,
+          fileMime: fileMime || undefined,
+        }),
       });
       if (!res.ok) { setError("Erreur lors de l'enregistrement."); return; }
       const doc = await res.json();
@@ -82,6 +114,8 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: (doc:
       setLoading(false);
     }
   }
+
+  const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
@@ -95,41 +129,46 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: (doc:
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Client *</label>
-              <input
-                required value={form.client} onChange={e => setForm({ ...form, client: e.target.value })}
-                placeholder="Nom du client"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <input required value={form.client} onChange={e => setForm({ ...form, client: e.target.value })}
+                placeholder="Nom du client" className={inputCls} />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Type de document *</label>
-              <select
-                value={form.type} onChange={e => setForm({ ...form, type: e.target.value as DocType })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+              <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as DocType })} className={inputCls}>
                 {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Véhicule concerné</label>
-              <input
-                value={form.vehicule} onChange={e => setForm({ ...form, vehicule: e.target.value })}
-                placeholder="ex. Peugeot 308 2024"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <input value={form.vehicule} onChange={e => setForm({ ...form, vehicule: e.target.value })}
+                placeholder="ex. Peugeot 308 2024" className={inputCls} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nom du fichier</label>
-              <input
-                value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })}
-                placeholder="Généré automatiquement si vide"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <label className="block text-sm font-medium text-slate-700 mb-1">Fichier</label>
+              <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={handleFileChange} hidden />
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-colors ${fileData ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:border-blue-400"}`}
+              >
+                {fileData ? (
+                  <>
+                    <CheckCircle size={24} className="text-emerald-500 mx-auto mb-1" />
+                    <p className="text-sm font-medium text-emerald-700">{fileName}</p>
+                    <p className="text-xs text-slate-400">{fileSize} · Cliquer pour changer</p>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={24} className="text-slate-400 mx-auto mb-2" />
+                    <p className="text-sm text-slate-500">Cliquer pour sélectionner un fichier</p>
+                    <p className="text-xs text-slate-400 mt-1">PDF, DOCX, JPEG, PNG — max 5 Mo</p>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer">
-              <Upload size={24} className="text-slate-400 mx-auto mb-2" />
-              <p className="text-sm text-slate-500">Glissez un fichier ici ou <span className="text-blue-600 font-medium">parcourir</span></p>
-              <p className="text-xs text-slate-400 mt-1">PDF, DOCX, JPEG — max 20 Mo</p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Nom du document</label>
+              <input value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })}
+                placeholder={fileName || "Généré automatiquement si vide"} className={inputCls} />
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <div className="flex gap-3 pt-2">
@@ -341,10 +380,30 @@ export default function DocumentsPage() {
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1">
-                          <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Voir">
+                          <button
+                            onClick={() => {
+                              if (doc.fileData) {
+                                window.open(doc.fileData, "_blank");
+                              } else {
+                                alert("Aucun fichier attaché à ce document.");
+                              }
+                            }}
+                            className={`p-1.5 rounded-lg transition-colors ${doc.fileData ? "text-slate-400 hover:text-blue-600 hover:bg-blue-50" : "text-slate-200 cursor-not-allowed"}`}
+                            title={doc.fileData ? "Voir le fichier" : "Aucun fichier"}
+                          >
                             <Eye size={15} />
                           </button>
-                          <button className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Télécharger">
+                          <button
+                            onClick={() => {
+                              if (!doc.fileData) { alert("Aucun fichier attaché."); return; }
+                              const a = document.createElement("a");
+                              a.href = doc.fileData;
+                              a.download = doc.nom;
+                              a.click();
+                            }}
+                            className={`p-1.5 rounded-lg transition-colors ${doc.fileData ? "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50" : "text-slate-200 cursor-not-allowed"}`}
+                            title={doc.fileData ? "Télécharger" : "Aucun fichier"}
+                          >
                             <Download size={15} />
                           </button>
                           <button

@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
@@ -16,18 +16,19 @@ const vehiculeSchema = z.object({
   type: z.enum(["neuf", "occasion"]).optional(),
   kilometrage: z.coerce.number().int().min(0).optional(),
   vin: z.string().optional(),
+  photo: z.string().optional(),
 });
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return NextResponse.json({ error: "Non autorisÃ©" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
   const items = await listAll<Vehicule>("inventory", session.user.id);
   return NextResponse.json(items);
 }
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return NextResponse.json({ error: "Non autorisÃ©" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Non autorise" }, { status: 401 });
   const parsed = vehiculeSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   const body = parsed.data;
@@ -37,12 +38,12 @@ export async function POST(req: Request) {
     annee: body.annee,
     prix: body.prix,
     carburant: body.carburant || "Essence",
-    couleur: body.couleur || "â€”",
+    couleur: body.couleur || "",
     type: body.type ?? "neuf",
     statut: "disponible",
     kilometrage: body.kilometrage ?? 0,
     vin: body.vin || randomUUID(),
+    photo: body.photo || undefined,
   });
   return NextResponse.json(item, { status: 201 });
 }
-

@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard, Users, Car, ShoppingCart, Wrench,
-  Megaphone, ChevronRight, Settings, LogOut, FolderOpen,
+  ChevronRight, Settings, LogOut, FolderOpen,
 } from "lucide-react";
 import NotificationsPanel from "@/components/layout/NotificationsPanel";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,6 @@ const ALL_NAV = [
   { href: "/sales", label: "Ventes", icon: ShoppingCart },
   { href: "/workshop", label: "Atelier SAV", icon: Wrench },
   { href: "/documents", label: "Documents", icon: FolderOpen },
-  { href: "/marketing", label: "Marketing", icon: Megaphone },
 ];
 
 export default function Sidebar() {
