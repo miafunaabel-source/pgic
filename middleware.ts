@@ -2,6 +2,9 @@ import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { ROUTE_PERMISSIONS } from "@/lib/roles";
 import type { Role } from "@/types/next-auth";
+import { DEMO_USER_ID, DEMO_READONLY_HEADER, DEMO_READONLY_MESSAGE, isDemoEnabled } from "@/lib/demoConfig";
+
+const READ_METHODS = ["GET", "HEAD", "OPTIONS"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -28,6 +31,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Entrée de la démo publique : déjà connecté → tableau de bord
+  if (pathname === "/demo") {
+    if (token) return NextResponse.redirect(new URL("/", req.url));
+    return NextResponse.next();
+  }
+
   // Pages publiques accessibles sans authentification
   if (
     pathname === "/unauthorized" ||
@@ -40,6 +49,22 @@ export async function middleware(req: NextRequest) {
   // Non authentifié → redirection vers /login
   if (!token) {
     return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  // Session démo : lecture seule, et invalidée si la démo est désactivée
+  if (token.id === DEMO_USER_ID) {
+    if (!isDemoEnabled()) {
+      const res = NextResponse.redirect(new URL("/login", req.url));
+      res.cookies.delete("__Secure-next-auth.session-token");
+      res.cookies.delete("next-auth.session-token");
+      return res;
+    }
+    if (pathname.startsWith("/api/") && !READ_METHODS.includes(req.method)) {
+      return NextResponse.json(
+        { error: DEMO_READONLY_MESSAGE },
+        { status: 403, headers: { [DEMO_READONLY_HEADER]: "readonly" } }
+      );
+    }
   }
 
   // Onboarding non complété → redirection vers /setup (sauf si déjà sur /setup)

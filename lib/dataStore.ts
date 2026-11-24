@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 import { randomUUID } from "crypto";
+import { DEMO_USER_ID, getDemoData } from "@/lib/demo";
 
 let client: Redis | null = null;
 
@@ -16,7 +17,13 @@ function key(entity: string, userId: string) {
   return `data:${entity}:${userId}`;
 }
 
+// Garde-fou en plus du middleware : le compte démo ne doit jamais écrire en base.
+function assertWritable(userId: string) {
+  if (userId === DEMO_USER_ID) throw new Error("Compte démo en lecture seule");
+}
+
 export async function listAll<T>(entity: string, userId: string): Promise<T[]> {
+  if (userId === DEMO_USER_ID) return getDemoData<T>(entity);
   try {
     const raw = await getRedis().get(key(entity, userId));
     if (!raw) return [];
@@ -31,6 +38,7 @@ export async function createItem<T extends { id: string }>(
   userId: string,
   data: Omit<T, "id">
 ): Promise<T> {
+  assertWritable(userId);
   const prefix = entity.slice(0, 3).toUpperCase();
   const item = { ...data, id: `${prefix}-${randomUUID().slice(0, 8)}` } as T;
   const current = await listAll<T>(entity, userId);
@@ -44,6 +52,7 @@ export async function updateItem<T extends { id: string }>(
   id: string,
   patch: Partial<T>
 ): Promise<T | null> {
+  assertWritable(userId);
   const current = await listAll<T>(entity, userId);
   const idx = current.findIndex((item) => item.id === id);
   if (idx === -1) return null;
@@ -58,6 +67,7 @@ export async function removeItem<T extends { id: string }>(
   userId: string,
   id: string
 ): Promise<boolean> {
+  assertWritable(userId);
   const current = await listAll<T>(entity, userId);
   const next = current.filter((item) => item.id !== id);
   if (next.length === current.length) return false;

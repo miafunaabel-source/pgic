@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Role } from "@/types/next-auth";
 import { checkRateLimit, recordFailedAttempt, resetAttempts } from "@/lib/rate-limiter";
 import { findUserByEmail } from "@/lib/userStore";
+import { DEMO_USER, DEMO_USER_ID, isDemoEnabled } from "@/lib/demo";
 
 const credentialsSchema = z.object({
   email: z.email("Email invalide"),
@@ -48,6 +49,16 @@ export const authOptions: NextAuthOptions = {
         return { id: user.id, name: user.name, email: user.email, role: user.role, company: user.company, setupComplete: user.setupComplete ?? false };
       },
     }),
+    // Accès démo sans mot de passe — session en lecture seule (voir middleware)
+    CredentialsProvider({
+      id: "demo",
+      name: "demo",
+      credentials: {},
+      async authorize() {
+        if (!isDemoEnabled()) return null;
+        return { ...DEMO_USER };
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }: any) {
@@ -60,7 +71,7 @@ export const authOptions: NextAuthOptions = {
       if (trigger === "update" && session?.setupComplete !== undefined) {
         token.setupComplete = session.setupComplete;
       }
-      if (!user && token.email && token.iat) {
+      if (!user && token.email && token.iat && token.id !== DEMO_USER_ID) {
         const dbUser = await findUserByEmail(token.email as string);
         if (dbUser?.passwordChangedAt) {
           const changedAtMs = new Date(dbUser.passwordChangedAt).getTime();

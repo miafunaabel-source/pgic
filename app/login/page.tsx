@@ -89,6 +89,10 @@ function LoginContent() {
           </form>
         </div>
 
+        <a href="/demo"
+          className="mt-4 block w-full text-center bg-white/10 hover:bg-white/20 border border-white/20 text-white py-2.5 rounded-lg text-sm font-medium transition-colors">
+          Découvrir la démo sans compte →
+        </a>
         <p className="text-center text-xs mt-4">
           <a href="/forgot-password" className="text-slate-400 hover:text-slate-200 transition-colors">Mot de passe oublié ?</a>
         </p>

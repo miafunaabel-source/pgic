@@ -76,14 +76,21 @@ export default function SettingsPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    saveSettings(form);
     try {
-      await fetch("/api/settings", {
+      const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-    } catch {}
+      if (!res.ok) {
+        if (res.status !== 403) toast("error", "Erreur lors de la sauvegarde des paramètres");
+        return;
+      }
+    } catch {
+      toast("error", "Erreur réseau : paramètres non sauvegardés");
+      return;
+    }
+    saveSettings(form);
     toast("success", "Paramètres sauvegardés avec succès");
   }
 

@@ -2,7 +2,7 @@
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 
-const PUBLIC_ROUTES = ["/login", "/unauthorized", "/register"];
+const PUBLIC_ROUTES = ["/login", "/unauthorized", "/register", "/demo"];
 
 export default function ConditionalSidebar() {
   const pathname = usePathname();
