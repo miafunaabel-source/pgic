@@ -10,6 +10,7 @@ export default function ResetPasswordPage() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [doneEmail, setDoneEmail] = useState("");
   const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
@@ -27,9 +28,9 @@ export default function ResetPasswordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) { setError(data.error ?? "Erreur lors de la réinitialisation."); }
-      else { setDone(true); }
+      else { setDoneEmail(data.email ?? ""); setDone(true); }
     } catch {
       setError("Erreur réseau, veuillez réessayer.");
     } finally {
@@ -58,7 +59,7 @@ export default function ResetPasswordPage() {
               </div>
               <h2 className="font-semibold text-slate-900 mb-2">Mot de passe mis à jour</h2>
               <p className="text-sm text-slate-500 mb-6">Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.</p>
-              <a href="/login"
+              <a href={`/login${doneEmail ? `?email=${encodeURIComponent(doneEmail)}` : ""}`}
                 className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors">
                 Se connecter
               </a>

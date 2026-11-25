@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 
 export default function ForgotPasswordPage() {
@@ -8,16 +8,27 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
 
+  // Email pré-rempli depuis la page de connexion (?email=…)
+  useEffect(() => {
+    const prefill = new URLSearchParams(window.location.search).get("email");
+    if (prefill) setEmail(prefill);
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      await fetch("/api/auth/forgot-password", {
+      const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Une erreur est survenue, veuillez réessayer.");
+        return;
+      }
       setSent(true);
     } catch {
       setError("Erreur réseau, veuillez réessayer.");
@@ -45,7 +56,7 @@ export default function ForgotPasswordPage() {
               </div>
               <h2 className="font-semibold text-slate-900 mb-2">Email envoyé</h2>
               <p className="text-sm text-slate-500 mb-6">
-                Si un compte existe avec <strong>{email}</strong>, vous recevrez un lien de réinitialisation valable 1 heure.
+                Si un compte existe avec <strong>{email}</strong>, vous recevrez un lien de réinitialisation valable 1 heure. Pensez à vérifier vos courriers indésirables.
               </p>
               <a href="/login" className="text-sm text-blue-600 hover:underline font-medium">
                 Retour à la connexion →
@@ -59,7 +70,7 @@ export default function ForgotPasswordPage() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Adresse email</label>
                   <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                    placeholder="vous@pgic.fr" autoComplete="email"
+                    placeholder="vous@concession.fr" autoComplete="email"
                     className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
                 </div>
                 {error && (

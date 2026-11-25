@@ -4,12 +4,28 @@ import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff, Loader2, AlertCircle, Clock } from "lucide-react";
 
+const ACCOUNT_URL = "https://pgic.eu/compte";
+
+// Messages des refus de connexion renvoyés par lib/auth.ts
+const LOGIN_MESSAGES: Record<string, { text: string; link?: { href: string; label: string } }> = {
+  SERVICE_UNAVAILABLE: { text: "Service momentanément indisponible. Réessayez dans quelques instants." },
+  SUBSCRIPTION_PENDING: {
+    text: "Votre paiement n'a pas encore été confirmé. Finalisez votre abonnement pour accéder au tableau de bord.",
+    link: { href: ACCOUNT_URL, label: "Finaliser mon abonnement →" },
+  },
+  SUBSCRIPTION_INACTIVE: {
+    text: "Votre abonnement n'est plus actif. Réactivez-le pour retrouver votre tableau de bord et vos données.",
+    link: { href: ACCOUNT_URL, label: "Réactiver mon abonnement →" },
+  },
+};
+
 function LoginContent() {
   const params = useSearchParams();
   const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [errorLink, setErrorLink] = useState<{ href: string; label: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [blockedMinutes, setBlockedMinutes] = useState(0);
 
@@ -17,19 +33,32 @@ function LoginContent() {
     e.preventDefault();
     if (blockedMinutes > 0) return;
     setError("");
+    setErrorLink(null);
     setLoading(true);
 
-    const result = await signIn("credentials", { email, password, redirect: false });
+    let result;
+    try {
+      result = await signIn("credentials", { email, password, redirect: false });
+    } catch {
+      setLoading(false);
+      setError("Erreur réseau. Vérifiez votre connexion et réessayez.");
+      return;
+    }
     setLoading(false);
 
     if (result?.error) {
       const rateLimitMatch = result.error.match(/RATE_LIMIT:(\d+)/);
+      const known = LOGIN_MESSAGES[result.error];
       if (rateLimitMatch) {
         const minutes = parseInt(rateLimitMatch[1], 10);
         setBlockedMinutes(minutes);
-        setError(`Trop de tentatives. Compte bloqué ${minutes} minute(s).`);
+        setTimeout(() => setBlockedMinutes(0), minutes * 60000);
+        setError(`Trop de tentatives. Réessayez dans ${minutes} minute(s) ou réinitialisez votre mot de passe.`);
+      } else if (known) {
+        setError(known.text);
+        setErrorLink(known.link ?? null);
       } else {
-        setError(`Email ou mot de passe incorrect.`);
+        setError("Email ou mot de passe incorrect.");
       }
     } else {
       window.location.replace("/");
@@ -54,12 +83,16 @@ function LoginContent() {
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Adresse email</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="vous@pgic.fr" required autoComplete="email"
+                placeholder="vous@concession.fr" required autoComplete="email"
                 className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Mot de passe</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-slate-700">Mot de passe</label>
+                <a href={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+                  className="text-xs text-blue-600 hover:underline">Mot de passe oublié ?</a>
+              </div>
               <div className="relative">
                 <input type={showPassword ? "text" : "password"} value={password}
                   onChange={e => setPassword(e.target.value)} placeholder="••••••••" required
@@ -77,7 +110,12 @@ function LoginContent() {
                 {blockedMinutes > 0
                   ? <Clock size={15} className="shrink-0 mt-0.5" />
                   : <AlertCircle size={15} className="shrink-0 mt-0.5" />}
-                <span>{error}</span>
+                <span>
+                  {error}
+                  {errorLink && (
+                    <a href={errorLink.href} className="block mt-1 font-medium text-blue-700 hover:underline">{errorLink.label}</a>
+                  )}
+                </span>
               </div>
             )}
 
@@ -93,8 +131,10 @@ function LoginContent() {
           className="mt-4 block w-full text-center bg-white/10 hover:bg-white/20 border border-white/20 text-white py-2.5 rounded-lg text-sm font-medium transition-colors">
           Découvrir la démo sans compte →
         </a>
-        <p className="text-center text-xs mt-4">
-          <a href="/forgot-password" className="text-slate-400 hover:text-slate-200 transition-colors">Mot de passe oublié ?</a>
+        <p className="text-center text-xs mt-4 space-x-3">
+          <a href="https://pgic.eu/#pricing" className="text-slate-400 hover:text-slate-200 transition-colors">Pas encore client ? Essai gratuit</a>
+          <span className="text-slate-600">·</span>
+          <a href={ACCOUNT_URL} className="text-slate-400 hover:text-slate-200 transition-colors">Abonnement & factures</a>
         </p>
         <p className="text-center text-xs text-slate-500 mt-3">
           © 2026 PGIC — Accès réservé au personnel autorisé

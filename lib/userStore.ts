@@ -16,6 +16,22 @@ export type CompanyData = {
   plan?: string;
 };
 
+// ⚠️ Format partagé avec le site (pgic-site/lib/userStore.ts) : même base Redis, mêmes clés `user:{email}`.
+// L'abonnement est écrit par le site (Stripe) ; l'app ne fait que le lire pour autoriser l'accès.
+export type SubscriptionStatus =
+  | "pending" | "trialing" | "active" | "past_due" | "unpaid" | "canceled"
+  | "incomplete" | "incomplete_expired" | "paused" | "cancelled";
+
+export type SubscriptionInfo = {
+  plan: string;
+  status: SubscriptionStatus;
+  createdAt?: string;
+  trialEnd?: string;
+  currentPeriodEnd?: string;
+  cancelAt?: string;
+  stripeCustomerId?: string;
+};
+
 export type UserRecord = {
   id: string;
   name: string;
@@ -23,9 +39,22 @@ export type UserRecord = {
   passwordHash: string;
   role: Role;
   company?: CompanyData;
+  subscription?: SubscriptionInfo;
   setupComplete?: boolean;
   passwordChangedAt?: string;
 };
+
+const ACCESS_STATUSES = new Set<SubscriptionStatus>(["active", "trialing", "past_due"]);
+const NEVER_PAID_STATUSES = new Set<SubscriptionStatus>(["pending", "incomplete", "incomplete_expired"]);
+
+export type AccessDecision = "ok" | "payment_pending" | "subscription_inactive";
+
+/** Accès au tableau de bord selon l'abonnement. Les comptes historiques sans abonnement gardent leur accès. */
+export function dashboardAccess(user: Pick<UserRecord, "subscription">): AccessDecision {
+  const status = user.subscription?.status;
+  if (!status || ACCESS_STATUSES.has(status)) return "ok";
+  return NEVER_PAID_STATUSES.has(status) ? "payment_pending" : "subscription_inactive";
+}
 
 let client: Redis | null = null;
 
@@ -38,14 +67,20 @@ export function getRedis(): Redis {
   return client;
 }
 
+/** Lecture tolérante : null si l'utilisateur n'existe pas OU si Redis est indisponible. */
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
   try {
-    const raw = await getRedis().get(`user:${email.toLowerCase()}`);
-    if (!raw) return null;
-    return JSON.parse(raw) as UserRecord;
+    return await findUserByEmailStrict(email);
   } catch {
     return null;
   }
+}
+
+/** Lecture stricte : lève une erreur si Redis est indisponible (pour ne pas confondre panne et mauvais identifiants). */
+export async function findUserByEmailStrict(email: string): Promise<UserRecord | null> {
+  const raw = await getRedis().get(`user:${email.trim().toLowerCase()}`);
+  if (!raw) return null;
+  return JSON.parse(raw) as UserRecord;
 }
 
 export async function saveUser(user: UserRecord): Promise<void> {

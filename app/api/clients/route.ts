@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
@@ -15,14 +15,16 @@ const clientSchema = z.object({
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return NextResponse.json({ error: "Non autorisÃ©" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   const items = await listAll<Client>("clients", session.user.id);
-  return NextResponse.json(items);
+  // Fiches créées avant correction de l'encodage : le tiret « — » avait été enregistré sous la forme « â€” ».
+  const fixDash = (value: string) => (value === "â€”" ? "—" : value);
+  return NextResponse.json(items.map(c => ({ ...c, telephone: fixDash(c.telephone), ville: fixDash(c.ville) })));
 }
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return NextResponse.json({ error: "Non autorisÃ©" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   const parsed = clientSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   const body = parsed.data;
@@ -30,8 +32,8 @@ export async function POST(req: Request) {
     nom: body.nom,
     prenom: body.prenom,
     email: body.email,
-    telephone: body.telephone || "â€”",
-    ville: body.ville || "â€”",
+    telephone: body.telephone || "—",
+    ville: body.ville || "—",
     statut: "prospect",
     score: 30,
     vehicule: "",

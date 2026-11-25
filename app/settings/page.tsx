@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Building2, Euro, Wrench, Star, Save, Target } from "lucide-react";
+import { Building2, Euro, Wrench, Star, Save, Target, CreditCard, ExternalLink } from "lucide-react";
 import { loadSettings, saveSettings, DEFAULT_SETTINGS, type CompanySettings } from "@/lib/settings";
 import { kpiData } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
@@ -105,6 +105,20 @@ export default function SettingsPage() {
           <h1 className="text-xl font-bold text-slate-900">Paramètres</h1>
           <p className="text-sm text-slate-500 mt-0.5">Configuration et objectifs de votre concession</p>
         </div>
+      </div>
+
+      <div id="abonnement" className="card p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <CreditCard size={18} />
+        </div>
+        <div className="flex-1">
+          <p className="font-semibold text-slate-900 text-sm">Abonnement</p>
+          <p className="text-sm text-slate-500">Formule, factures, carte bancaire et résiliation se gèrent depuis votre espace client.</p>
+        </div>
+        <a href="https://pgic.eu/compte" target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+          Gérer mon abonnement <ExternalLink size={14} />
+        </a>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
