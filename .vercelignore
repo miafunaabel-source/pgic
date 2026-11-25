@@ -1,0 +1,4 @@
+# Fichiers d'environnement locaux : jamais envoyés à Vercel (les variables de production sont gérées dans Vercel)
+.env
+.env.*
+!.env.example
